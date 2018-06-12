@@ -1,0 +1,79 @@
+---
+title: "Rmarkdown Lab Notebook Tutorial"
+author: "Mark Wadsworth"
+date: "6/12/2018"
+output: 
+    html_document: #This renders an html file. If a PDF is desired use pdf_document
+        css: custom.css #This is a css script I wrote to float the table of contents a the top left corner of the document 
+        toc: true #Add table of contents
+        code_folding: show #Allow code to seen. If hide is used the code is hidden. It can be toggled by clicking the hide/show button
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+library(pheatmap)
+suppressMessages(library(DESeq2)) #The suppressMessages function silences any std out and std err produced by the loading of the package
+suppressMessages(library(samr))
+suppressMessages(library(digest))
+```
+
+## Version Information
+
+This prints out the version of each package that I will use.
+
+```{r collapse=T} 
+print(R.version.string)
+print( paste("SAMR version:", packageVersion('samr')) )
+print( paste("DESeq2 version:", packageVersion('DESeq2')) )
+print( paste("pheatmap version:", packageVersion('pheatmap')) )
+```
+
+In Rmd you can add in bash or python commands by puting {bash} or {python} at the beginning of your code block.
+
+```{bash, collapse=T}
+python --version
+bash --version
+```
+
+## Load Data
+
+I'm loading TCGA BRCA RNASeq data for TNBC patients.
+
+### read.table
+
+This is the standard way to load data frames in R. I reorder the columns in the data file and put both files into one data structure to easily keep track of my data.
+
+```{r warning=F, message=F}
+start = proc.time()
+rna = NULL
+rna$Data = read.table("TCGA.BRCA.TNBC.log2.normalized.counts.txt", header=T, row.names = 1, sep="\t") #reads in the normalized counts data frame
+rna$info = read.table("TCGA.BRCA.TNBC.Phenos.txt", header=T, row.names = 1, sep="\t") #reads in the sample phenotype data frame
+
+rna$Data = rna$Data[,rownames(rna$info)] #This puts the data columns in the same order as the sample info file rows.
+
+print(proc.time() - start)
+```
+
+### fread
+
+fread is a faster way to read in files into the same data structure. 
+
+```{r warning=F, message=F}
+suppressMessages(library(data.table))
+start = proc.time()
+
+rna=NULL
+rna$Data=fread("TCGA.BRCA.TNBC.log2.normalized.counts.txt",sep="\t",header=T, data.table = F)
+rownames(rna$Data) = rna$Data[,1]
+rna$Data = rna$Data[,-1]
+
+rna$info=fread("TCGA.BRCA.TNBC.Phenos.txt",sep="\t",header=T, data.table = F)
+rownames(rna$info) = rna$info[,1]
+rna$info = rna$info[,-1]
+
+rna$Data = rna$Data[,rownames(rna$info)] #This puts the data columns in the same order as the sample info file rows.
+
+print(proc.time() - start)
+```
+
+
